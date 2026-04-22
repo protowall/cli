@@ -17,7 +17,24 @@ pip install -r requirements.txt
 
 3. Create an API key at [protowall.app/dashboard](https://protowall.app/dashboard/) — click "Create key" in the API Keys section.
 
-4. Add to your Claude Code config (`~/.claude/settings.json`):
+4. Add to your agent's MCP config:
+
+**Claude Code** (`~/.claude/settings.json` or project `.claude/settings.json`):
+```json
+{
+  "mcpServers": {
+    "protowall": {
+      "command": "python",
+      "args": ["/path/to/mcp-server/server.py"],
+      "env": {
+        "PROTOWALL_API_KEY": "pw_sk_your_key_here"
+      }
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json` in your project root):
 ```json
 {
   "mcpServers": {
