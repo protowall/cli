@@ -1,31 +1,57 @@
-# ProtoWall MCP Server
+# ProtoWall
 
-MCP server for managing ProtoWall projects, invites, and access from coding agents like Claude Code and Cursor.
+CLI and MCP server for managing ProtoWall projects, invites, and access.
 
-## Setup
+## Install
 
-1. Clone this repo:
+```bash
+pip install protowall
+```
+
+Or from source:
 ```bash
 git clone https://github.com/protowall/mcp-server.git
 cd mcp-server
+pip install .
 ```
 
-2. Install dependencies:
+## API Key
+
+Create an API key at [protowall.app/dashboard](https://protowall.app/dashboard/) and set it:
+
 ```bash
-pip install -r requirements.txt
+export PROTOWALL_API_KEY="pw_sk_your_key_here"
 ```
 
-3. Create an API key at [protowall.app/dashboard](https://protowall.app/dashboard/) — click "Create key" in the API Keys section.
+## CLI
 
-4. Add to your agent's MCP config:
+```bash
+protowall projects                          # List projects
+protowall project <slug>                    # Get project detail
+protowall project create <name> <url>       # Create project
+protowall project delete <slug>             # Delete project
+protowall invites <slug>                    # List invites
+protowall invite <slug> <email>             # Send invite
+protowall revoke <slug> <invite-id>         # Revoke access
+protowall audit <slug>                      # View audit log
+protowall rotate-secret <slug>              # Rotate origin secret
+```
+
+All commands output JSON for easy piping:
+```bash
+protowall projects | jq '.[0].slug'
+```
+
+## MCP Server
+
+Add to your agent's MCP config:
 
 **Claude Code** (`~/.claude/settings.json` or project `.claude/settings.json`):
 ```json
 {
   "mcpServers": {
     "protowall": {
-      "command": "python",
-      "args": ["/path/to/mcp-server/server.py"],
+      "command": "protowall-mcp",
       "env": {
         "PROTOWALL_API_KEY": "pw_sk_your_key_here"
       }
@@ -39,8 +65,7 @@ pip install -r requirements.txt
 {
   "mcpServers": {
     "protowall": {
-      "command": "python",
-      "args": ["/path/to/mcp-server/server.py"],
+      "command": "protowall-mcp",
       "env": {
         "PROTOWALL_API_KEY": "pw_sk_your_key_here"
       }
@@ -49,7 +74,7 @@ pip install -r requirements.txt
 }
 ```
 
-## Available Tools
+### Available Tools
 
 | Tool | Description |
 |---|---|
@@ -60,14 +85,11 @@ pip install -r requirements.txt
 | `get_audit_log` | View audit events for a project |
 | `rotate_secret` | Rotate the origin secret |
 
-## Usage
-
-Once configured, you can ask your coding agent things like:
+Once configured, ask your agent things like:
 
 - "Create a ProtoWall project for my prototype at https://my-app.onrender.com"
 - "Invite reviewer@example.com to my-project"
 - "Show the audit log for my-project"
-- "Revoke access for invite xyz"
 
 ## Environment Variables
 

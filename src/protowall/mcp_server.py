@@ -1,44 +1,38 @@
 """ProtoWall MCP Server — manage projects, invites, and access from coding agents."""
 
-import os
 import json
 
-import httpx
 from mcp.server.fastmcp import FastMCP
 
-API_URL = os.environ.get("PROTOWALL_API_URL", "https://protowall.app").rstrip("/")
-API_KEY = os.environ.get("PROTOWALL_API_KEY", "")
+from protowall.client import ProtoWallClient, ApiError
 
 mcp = FastMCP("ProtoWall", instructions=(
     "ProtoWall puts an authentication and NDA wall in front of prototypes. "
     "Use these tools to manage projects, invite reviewers, revoke access, and view audit logs."
 ))
 
-
-def _headers():
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
+_client = None
 
 
-def _api(method, path, json_body=None):
-    """Call the ProtoWall API and return the parsed response."""
-    url = f"{API_URL}/api/v1{path}"
-    with httpx.Client(timeout=30) as client:
-        resp = client.request(method, url, headers=_headers(), json=json_body)
-    data = resp.json()
-    if resp.status_code >= 400:
-        error = data.get("error", "Unknown error")
-        code = data.get("code", "error")
-        return f"Error ({code}): {error}"
-    return json.dumps(data.get("data", data), indent=2)
+def _get_client():
+    global _client
+    if _client is None:
+        _client = ProtoWallClient()
+    return _client
+
+
+def _call(fn, *args, **kwargs):
+    try:
+        result = fn(*args, **kwargs)
+        return json.dumps(result, indent=2)
+    except ApiError as e:
+        return f"Error ({e.code}): {e.message}"
 
 
 @mcp.tool()
 def list_projects() -> str:
     """List all projects you own. Returns project names, slugs, destination URLs, and origin secrets."""
-    return _api("GET", "/projects")
+    return _call(_get_client().list_projects)
 
 
 @mcp.tool()
@@ -50,10 +44,7 @@ def create_project(name: str, destination_url: str, nda_text: str = "") -> str:
         destination_url: URL of your prototype (e.g. "https://my-app.onrender.com")
         nda_text: Custom NDA text (Pro only). Leave empty for the default template.
     """
-    body = {"name": name, "destination_url": destination_url}
-    if nda_text:
-        body["nda_text"] = nda_text
-    return _api("POST", "/projects", body)
+    return _call(_get_client().create_project, name, destination_url, nda_text or None)
 
 
 @mcp.tool()
@@ -64,7 +55,7 @@ def send_invite(project_slug: str, email: str) -> str:
         project_slug: The project's slug (from list_projects)
         email: Reviewer's email address
     """
-    return _api("POST", f"/projects/{project_slug}/invites", {"email": email})
+    return _call(_get_client().send_invite, project_slug, email)
 
 
 @mcp.tool()
@@ -75,7 +66,7 @@ def revoke_access(project_slug: str, invite_id: str) -> str:
         project_slug: The project's slug
         invite_id: The invite ID to revoke (from list_invites or send_invite response)
     """
-    return _api("POST", f"/projects/{project_slug}/invites/{invite_id}/revoke")
+    return _call(_get_client().revoke_access, project_slug, invite_id)
 
 
 @mcp.tool()
@@ -86,7 +77,7 @@ def get_audit_log(project_slug: str, limit: int = 20) -> str:
         project_slug: The project's slug
         limit: Number of events to return (max 100, default 20)
     """
-    return _api("GET", f"/projects/{project_slug}/audit?limit={limit}")
+    return _call(_get_client().get_audit_log, project_slug, limit)
 
 
 @mcp.tool()
@@ -96,12 +87,8 @@ def rotate_secret(project_slug: str) -> str:
     Args:
         project_slug: The project's slug
     """
-    return _api("POST", f"/projects/{project_slug}/rotate-secret")
+    return _call(_get_client().rotate_secret, project_slug)
 
 
-if __name__ == "__main__":
-    if not API_KEY:
-        print("Error: PROTOWALL_API_KEY environment variable is required.")
-        print("Create an API key at https://protowall.app/dashboard/")
-        raise SystemExit(1)
+def main():
     mcp.run()
