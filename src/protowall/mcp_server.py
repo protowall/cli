@@ -91,4 +91,5 @@ def rotate_secret(project_slug: str) -> str:
 
 
 def main():
-    mcp.run()
+    import asyncio
+    asyncio.run(mcp.run_stdio_async())
