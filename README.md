@@ -10,8 +10,8 @@ pip install protowall
 
 Or from source:
 ```bash
-git clone https://github.com/protowall/mcp-server.git
-cd mcp-server
+git clone https://github.com/protowall/cli.git
+cd cli
 pip install .
 ```
 
