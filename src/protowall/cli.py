@@ -124,6 +124,30 @@ def cmd_rotate_secret(args):
         _error(e)
 
 
+def cmd_usage(args):
+    """Get project usage analytics (Pro)."""
+    if not args:
+        print("Usage: protowall usage <project-slug> [7d|30d]", file=sys.stderr)
+        raise SystemExit(1)
+    range_ = args[1] if len(args) > 1 else "7"
+    try:
+        _print(_client().get_project_usage(args[0], range_))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_reviewer(args):
+    """Get per-reviewer engagement (Pro)."""
+    if len(args) < 2:
+        print("Usage: protowall reviewer <project-slug> <invite-id> [7d|30d]", file=sys.stderr)
+        raise SystemExit(1)
+    range_ = args[2] if len(args) > 2 else "30"
+    try:
+        _print(_client().get_invitee_engagement(args[0], args[1], range_))
+    except ApiError as e:
+        _error(e)
+
+
 COMMANDS = {
     "projects": ("List all projects", cmd_projects),
     "project": ("Get project detail: project <slug>", cmd_project_get),
@@ -133,6 +157,8 @@ COMMANDS = {
     "invite": ("Send invite: invite <slug> <email>", cmd_invite),
     "revoke": ("Revoke access: revoke <slug> <invite-id>", cmd_revoke),
     "audit": ("Audit log: audit <slug> [limit]", cmd_audit),
+    "usage": ("Project usage (Pro): usage <slug> [7d|30d]", cmd_usage),
+    "reviewer": ("Reviewer engagement (Pro): reviewer <slug> <invite-id> [7d|30d]", cmd_reviewer),
     "rotate-secret": ("Rotate secret: rotate-secret <slug>", cmd_rotate_secret),
 }
 

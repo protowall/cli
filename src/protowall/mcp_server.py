@@ -90,6 +90,36 @@ def rotate_secret(project_slug: str) -> str:
     return _call(_get_client().rotate_secret, project_slug)
 
 
+@mcp.tool()
+def get_project_usage(project_slug: str, range: str = "7") -> str:
+    """Get project usage analytics — unique reviewers, total views, top routes, daily timeline. Pro plan only.
+
+    Reviewer engagement only: static assets and the builder's own preview traffic
+    are filtered out. Use this to answer "who looked at my prototype this week
+    and what did they actually do?".
+
+    Args:
+        project_slug: The project's slug
+        range: Window length. Accepts "7", "30", "7d", or "30d". Defaults to 7.
+    """
+    return _call(_get_client().get_project_usage, project_slug, range)
+
+
+@mcp.tool()
+def get_reviewer_engagement(project_slug: str, invite_id: str, range: str = "30") -> str:
+    """Get per-reviewer engagement — total views, first/last seen, top paths, daily timeline. Pro plan only.
+
+    Use this to dig into one specific reviewer's behaviour: "what did acme@corp.com
+    actually look at on the Q2 prototype, and how long did they spend?".
+
+    Args:
+        project_slug: The project's slug
+        invite_id: The invite ID for the reviewer (from list_invites)
+        range: Window length. Accepts "7", "30", "7d", or "30d". Defaults to 30.
+    """
+    return _call(_get_client().get_invitee_engagement, project_slug, invite_id, range)
+
+
 def main():
     import asyncio
     asyncio.run(mcp.run_stdio_async())

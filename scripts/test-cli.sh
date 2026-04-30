@@ -102,6 +102,28 @@ check "Rotate secret succeeds" "0" "$status"
 secret=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['origin_secret'])" 2>/dev/null || echo "")
 check "Secret starts with pw_proj_" "true" "$(echo "$secret" | grep -q '^pw_proj_' && echo true || echo false)"
 
+# --- Analytics (Pro-only — both 0 and tier_required exit are valid) ---
+echo ""
+echo "Analytics"
+output=$(protowall usage "$slug" 7 2>&1) && status=0 || status=$?
+if [ "$status" = "0" ]; then
+    window=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin)['window_days'])" 2>/dev/null || echo "")
+    check "usage window=7" "7" "$window"
+else
+    case "$output" in
+        *tier_required*) echo "  ✓ usage tier-gated to Pro (free tier)"; PASS=$((PASS+1)) ;;
+        *) echo "  ✗ usage failed unexpectedly: $output"; FAIL=$((FAIL+1)) ;;
+    esac
+fi
+
+# Invalid range
+output=$(protowall usage "$slug" 90 2>&1) && status=0 || status=$?
+case "$output" in
+    *validation_error*) echo "  ✓ usage rejects range=90"; PASS=$((PASS+1)) ;;
+    *tier_required*) echo "  ✓ usage tier-gated (free tier)"; PASS=$((PASS+1)) ;;
+    *) echo "  ✗ usage range=90 unexpected: $output"; FAIL=$((FAIL+1)) ;;
+esac
+
 # --- Delete project ---
 echo ""
 echo "Cleanup"

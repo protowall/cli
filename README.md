@@ -34,6 +34,8 @@ protowall invites <slug>                    # List invites
 protowall invite <slug> <email>             # Send invite
 protowall revoke <slug> <invite-id>         # Revoke access
 protowall audit <slug>                      # View audit log
+protowall usage <slug> [7d|30d]             # Project usage analytics (Pro)
+protowall reviewer <slug> <invite-id> [7d|30d]   # Per-reviewer engagement (Pro)
 protowall rotate-secret <slug>              # Rotate origin secret
 ```
 
@@ -84,12 +86,16 @@ Add to your agent's MCP config:
 | `revoke_access` | Revoke a reviewer's access immediately |
 | `get_audit_log` | View audit events for a project |
 | `rotate_secret` | Rotate the origin secret |
+| `get_project_usage` | Project-wide engagement rollup over 7 or 30 days (Pro) |
+| `get_reviewer_engagement` | Per-reviewer engagement rollup with top paths and timeline (Pro) |
 
 Once configured, ask your agent things like:
 
 - "Create a ProtoWall project for my prototype at https://my-app.onrender.com"
 - "Invite reviewer@example.com to my-project"
 - "Show the audit log for my-project"
+- "Who looked at my-project this week and what did they spend time on?"
+- "Pull the engagement breakdown for the reviewer with invite id cvw80…"
 
 ## Environment Variables
 
