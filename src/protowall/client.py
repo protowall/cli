@@ -63,6 +63,15 @@ class ProtoWallClient:
     def rotate_secret(self, slug):
         return self._request("POST", f"/projects/{slug}/rotate-secret")
 
+    def get_project_usage(self, slug, range_="7"):
+        return self._request("GET", f"/projects/{slug}/usage", params={"range": range_})
+
+    def get_invitee_engagement(self, slug, invite_id, range_="30"):
+        return self._request(
+            "GET", f"/projects/{slug}/invitees/{invite_id}/engagement",
+            params={"range": range_},
+        )
+
 
 class ApiError(Exception):
     def __init__(self, message, code, status):

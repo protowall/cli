@@ -39,8 +39,12 @@ def main():
     from protowall.mcp_server import mcp
     tools = mcp._tool_manager.list_tools()
     tool_names = [t.name for t in tools]
-    check("Has 6 tools", 6, len(tools))
-    for name in ["list_projects", "create_project", "send_invite", "revoke_access", "get_audit_log", "rotate_secret"]:
+    check("Has 8 tools", 8, len(tools))
+    for name in [
+        "list_projects", "create_project", "send_invite", "revoke_access",
+        "get_audit_log", "rotate_secret",
+        "get_project_usage", "get_reviewer_engagement",
+    ]:
         check(f"Has {name}", True, name in tool_names)
 
     # --- API client ---
@@ -94,6 +98,23 @@ def main():
     result = client.rotate_secret(slug)
     secret = result.get("origin_secret", "")
     check("Rotate returns pw_proj_ secret", True, secret.startswith("pw_proj_"))
+
+    # Project usage (Pro-only — may 403 on free; both outcomes are valid)
+    print("\nAnalytics")
+    try:
+        usage = client.get_project_usage(slug, "7")
+        check("get_project_usage returns rollup", True, "window_days" in usage)
+        check("Window is 7", 7, usage["window_days"])
+        check("Timeline has 7 entries", 7, len(usage["timeline"]))
+    except ApiError as e:
+        check("Usage tier-gated to Pro", "tier_required", e.code)
+
+    # Invalid range
+    try:
+        client.get_project_usage(slug, "90")
+        check("Bad range raises", True, False)
+    except ApiError as e:
+        check("Bad range raises validation_error", "validation_error", e.code)
 
     # Cleanup
     print("\nCleanup")
