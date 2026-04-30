@@ -36,6 +36,8 @@ protowall revoke <slug> <invite-id>         # Revoke access
 protowall audit <slug>                      # View audit log
 protowall usage <slug> [7d|30d]             # Project usage analytics (Pro)
 protowall reviewer <slug> <invite-id> [7d|30d]   # Per-reviewer engagement (Pro)
+protowall sessions <slug> <invite-id>       # List sessions + cached AI summaries (Pro, read-only)
+protowall summarize-session <slug> <invite-id> <session-start>   # Generate session summary (Pro, uses cap)
 protowall rotate-secret <slug>              # Rotate origin secret
 ```
 
@@ -88,6 +90,8 @@ Add to your agent's MCP config:
 | `rotate_secret` | Rotate the origin secret |
 | `get_project_usage` | Project-wide engagement rollup over 7 or 30 days (Pro) |
 | `get_reviewer_engagement` | Per-reviewer engagement rollup with top paths and timeline (Pro) |
+| `list_reviewer_sessions` | List a reviewer's sessions with cached AI summaries (Pro, read-only — no cap consumed) |
+| `summarize_reviewer_session` | Generate or fetch a cached AI summary for one session (Pro, counts against monthly cap) |
 
 Once configured, ask your agent things like:
 
@@ -96,6 +100,7 @@ Once configured, ask your agent things like:
 - "Show the audit log for my-project"
 - "Who looked at my-project this week and what did they spend time on?"
 - "Pull the engagement breakdown for the reviewer with invite id cvw80…"
+- "Summarize what acme@corp.com did during their most recent session on my-project"
 
 ## Environment Variables
 

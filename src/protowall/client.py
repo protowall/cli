@@ -22,15 +22,15 @@ class ProtoWallClient:
             "Content-Type": "application/json",
         }
 
-    def _request(self, method, path, json_body=None, params=None):
+    def _request(self, method, path, json_body=None, params=None, timeout=30):
         url = f"{self.api_url}/api/v1{path}"
-        with httpx.Client(timeout=30) as http:
+        with httpx.Client(timeout=timeout) as http:
             resp = http.request(method, url, headers=self._headers(), json=json_body, params=params)
         data = resp.json()
         if resp.status_code >= 400:
             error = data.get("error", "Unknown error")
             code = data.get("code", "error")
-            raise ApiError(error, code, resp.status_code)
+            raise ApiError(error, code, resp.status_code, body=data)
         return data.get("data", data)
 
     def list_projects(self):
@@ -72,10 +72,25 @@ class ProtoWallClient:
             params={"range": range_},
         )
 
+    def list_reviewer_sessions(self, slug, invite_id):
+        """Read-only. Returns sessions with cached summaries; no API cost, no cap consumed."""
+        return self._request(
+            "GET", f"/projects/{slug}/invitees/{invite_id}/sessions",
+        )
+
+    def summarize_reviewer_session(self, slug, invite_id, session_start):
+        """Generate (or fetch cached) summary for one session. Counts against the monthly cap."""
+        return self._request(
+            "POST", f"/projects/{slug}/invitees/{invite_id}/sessions/summarize",
+            {"session_start": session_start},
+            timeout=60,  # Sonnet round-trip can take 5-15s, leave generous headroom
+        )
+
 
 class ApiError(Exception):
-    def __init__(self, message, code, status):
+    def __init__(self, message, code, status, body=None):
         self.message = message
         self.code = code
         self.status = status
+        self.body = body or {}
         super().__init__(f"{message} ({code})")

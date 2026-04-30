@@ -120,6 +120,41 @@ def get_reviewer_engagement(project_slug: str, invite_id: str, range: str = "30"
     return _call(_get_client().get_invitee_engagement, project_slug, invite_id, range)
 
 
+@mcp.tool()
+def list_reviewer_sessions(project_slug: str, invite_id: str) -> str:
+    """List a reviewer's sessions with their cached AI summaries. **Read-only — no API cost, doesn't count against any cap.**
+
+    A "session" is a contiguous run of access events with no gap longer than 30 minutes.
+    Each session in the response includes a `summary` object (with headline + body_md) if
+    one has already been generated, or `summary: null` if not. Top-level `summaries_used`
+    and `summaries_cap` show the builder's current monthly usage.
+
+    Use this first to discover what sessions exist and check remaining cap before calling
+    `summarize_reviewer_session`.
+
+    Args:
+        project_slug: The project's slug
+        invite_id: The invite ID for the reviewer (from list_invites)
+    """
+    return _call(_get_client().list_reviewer_sessions, project_slug, invite_id)
+
+
+@mcp.tool()
+def summarize_reviewer_session(project_slug: str, invite_id: str, session_start: str) -> str:
+    """Generate (or fetch cached) AI summary for one specific reviewer session. **Counts against the builder's monthly summary cap (default 50/month, shared across dashboard, CLI, and agents).**
+
+    Returns the cached summary if it already exists for that session_start — that case
+    does NOT count against the cap. Use `list_reviewer_sessions` first if you want to
+    check remaining cap or pick a specific session.
+
+    Args:
+        project_slug: The project's slug
+        invite_id: The invite ID (from list_invites)
+        session_start: ISO timestamp matching a session_start from list_reviewer_sessions
+    """
+    return _call(_get_client().summarize_reviewer_session, project_slug, invite_id, session_start)
+
+
 def main():
     import asyncio
     asyncio.run(mcp.run_stdio_async())
