@@ -39,11 +39,12 @@ def main():
     from protowall.mcp_server import mcp
     tools = mcp._tool_manager.list_tools()
     tool_names = [t.name for t in tools]
-    check("Has 8 tools", 8, len(tools))
+    check("Has 10 tools", 10, len(tools))
     for name in [
         "list_projects", "create_project", "send_invite", "revoke_access",
         "get_audit_log", "rotate_secret",
         "get_project_usage", "get_reviewer_engagement",
+        "list_reviewer_sessions", "summarize_reviewer_session",
     ]:
         check(f"Has {name}", True, name in tool_names)
 
@@ -115,6 +116,21 @@ def main():
         check("Bad range raises", True, False)
     except ApiError as e:
         check("Bad range raises validation_error", "validation_error", e.code)
+
+    # Session narratives — list (read-only, no cap impact)
+    print("\nSession narratives")
+    # Need an invite to query sessions; reuse the smoke invite we sent earlier (now revoked)
+    sessions_resp = client.list_reviewer_sessions(slug, invite_id)
+    check("list_reviewer_sessions returns shape", True, "sessions" in sessions_resp)
+    check("Includes summaries_used", True, "summaries_used" in sessions_resp)
+    check("Includes summaries_cap", True, "summaries_cap" in sessions_resp)
+
+    # Bad session_start
+    try:
+        client.summarize_reviewer_session(slug, invite_id, "not-a-timestamp")
+        check("Bad session_start raises", True, False)
+    except ApiError as e:
+        check("Bad session_start raises validation_error", "validation_error", e.code)
 
     # Cleanup
     print("\nCleanup")

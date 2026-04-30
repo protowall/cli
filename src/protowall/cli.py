@@ -148,6 +148,41 @@ def cmd_reviewer(args):
         _error(e)
 
 
+def cmd_sessions(args):
+    """List reviewer sessions with cached AI summaries (Pro). Read-only — no API cost, no cap consumed."""
+    if len(args) < 2:
+        print("Usage: protowall sessions <project-slug> <invite-id>", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().list_reviewer_sessions(args[0], args[1]))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_summarize_session(args):
+    """Generate an AI summary for a session (Pro, counts against monthly cap)."""
+    if len(args) < 3:
+        print(
+            "Usage: protowall summarize-session <project-slug> <invite-id> <session-start>\n"
+            "Pass session_start as the ISO timestamp from `protowall sessions ...`.\n"
+            "Counts against your monthly cap (default 50/month).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    try:
+        _print(_client().summarize_reviewer_session(args[0], args[1], args[2]))
+    except ApiError as e:
+        if e.code == "cap_exhausted":
+            used = e.body.get("summaries_used")
+            cap = e.body.get("summaries_cap")
+            print(
+                f"Error: monthly summary cap reached ({used}/{cap}). Resets at the start of next month.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        _error(e)
+
+
 COMMANDS = {
     "projects": ("List all projects", cmd_projects),
     "project": ("Get project detail: project <slug>", cmd_project_get),
@@ -159,6 +194,8 @@ COMMANDS = {
     "audit": ("Audit log: audit <slug> [limit]", cmd_audit),
     "usage": ("Project usage (Pro): usage <slug> [7d|30d]", cmd_usage),
     "reviewer": ("Reviewer engagement (Pro): reviewer <slug> <invite-id> [7d|30d]", cmd_reviewer),
+    "sessions": ("List sessions + cached summaries (Pro, read-only): sessions <slug> <invite-id>", cmd_sessions),
+    "summarize-session": ("Generate session summary (Pro, uses cap): summarize-session <slug> <invite-id> <session-start>", cmd_summarize_session),
     "rotate-secret": ("Rotate secret: rotate-secret <slug>", cmd_rotate_secret),
 }
 

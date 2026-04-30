@@ -124,6 +124,35 @@ case "$output" in
     *) echo "  ✗ usage range=90 unexpected: $output"; FAIL=$((FAIL+1)) ;;
 esac
 
+# Session narratives — list happy path (no cap impact)
+if [ -n "$invite_id" ]; then
+    output=$(protowall sessions "$slug" "$invite_id" 2>&1) && status=0 || status=$?
+    case "$status" in
+        0)
+            cap=$(echo "$output" | python3 -c "import sys,json; print(json.load(sys.stdin).get('summaries_cap', '?'))" 2>/dev/null || echo "")
+            if [ "$cap" = "50" ] || [ "$cap" = "0" ]; then
+                echo "  ✓ sessions returns rollup (cap=$cap)"; PASS=$((PASS+1))
+            else
+                echo "  ✗ sessions cap unexpected: $cap"; FAIL=$((FAIL+1))
+            fi
+            ;;
+        *)
+            case "$output" in
+                *tier_required*) echo "  ✓ sessions tier-gated (free tier)"; PASS=$((PASS+1)) ;;
+                *) echo "  ✗ sessions failed: $output"; FAIL=$((FAIL+1)) ;;
+            esac
+            ;;
+    esac
+
+    # Bad session_start
+    output=$(protowall summarize-session "$slug" "$invite_id" not-a-timestamp 2>&1) && status=0 || status=$?
+    case "$output" in
+        *validation_error*) echo "  ✓ summarize-session rejects bad timestamp"; PASS=$((PASS+1)) ;;
+        *tier_required*) echo "  ✓ summarize-session tier-gated"; PASS=$((PASS+1)) ;;
+        *) echo "  ✗ summarize-session unexpected: $output"; FAIL=$((FAIL+1)) ;;
+    esac
+fi
+
 # --- Delete project ---
 echo ""
 echo "Cleanup"
