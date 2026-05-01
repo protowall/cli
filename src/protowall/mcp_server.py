@@ -147,6 +147,12 @@ def summarize_reviewer_session(project_slug: str, invite_id: str, session_start:
     does NOT count against the cap. Use `list_reviewer_sessions` first if you want to
     check remaining cap or pick a specific session.
 
+    **Design note:** Force-regenerating an active summary or clearing one are intentionally
+    dashboard-only operations — there is no API/CLI/MCP equivalent. This keeps the monthly
+    cap a meaningful boundary instead of an automation footgun. If you (the agent) want a
+    custom narrative beyond the cached summary, pull raw events with `list_reviewer_sessions`
+    or `get_reviewer_engagement` and compose your own story with your own model.
+
     Args:
         project_slug: The project's slug
         invite_id: The invite ID (from list_invites)
