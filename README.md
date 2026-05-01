@@ -102,6 +102,19 @@ Once configured, ask your agent things like:
 - "Pull the engagement breakdown for the reviewer with invite id cvw80…"
 - "Summarize what acme@corp.com did during their most recent session on my-project"
 
+## Design notes
+
+### Session summaries are dashboard-write, API-read
+
+`summarize_reviewer_session` is **idempotent** — it returns a cached summary if one exists, otherwise it generates a fresh one (which counts against the builder's monthly cap of 50). It does NOT force-regenerate an active summary, and there is no `clear` or `regenerate` command on the CLI / MCP / API.
+
+Those two operations are deliberately dashboard-only. The reasoning:
+
+1. **The monthly cap stays a meaningful boundary.** Without a clear endpoint, no agent automation can quietly cycle summaries to "find the best framing" and burn through a builder's slots.
+2. **Cleaner product split.** The cached AI summary is a UX convenience for dashboard users. Agents that want a custom narrative have raw events and durations available via `list_reviewer_sessions` and `get_reviewer_engagement` — bring your own model and your own budget.
+
+If `list_reviewer_sessions` returns a session with `summary: null`, that can mean either "never generated" OR "generated then cleared." Either way, the right next step from an agent's perspective is the same: call `summarize_reviewer_session` to get an active one (or compose your own narrative from the raw events).
+
 ## Environment Variables
 
 | Variable | Required | Default |
