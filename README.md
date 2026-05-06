@@ -38,6 +38,13 @@ protowall usage <slug> [7d|30d]             # Project usage analytics (Pro)
 protowall reviewer <slug> <invite-id> [7d|30d]   # Per-reviewer engagement (Pro)
 protowall sessions <slug> <invite-id>       # List sessions + cached AI summaries (Pro, read-only)
 protowall summarize-session <slug> <invite-id> <session-start>   # Generate session summary (Pro, uses cap)
+protowall previews <slug> [--open]          # List project previews (Pro)
+protowall preview create <slug> <suffix> <url> [--label=...] [--ref=...]   # Create preview (Pro)
+protowall preview update <slug> <preview-id> [--url=...] [--label=...] [--ref=...]   # Update preview (Pro)
+protowall preview close <slug> <preview-id> # Soft-close preview (Pro)
+protowall requests <slug> [pending|approved|declined]   # List access requests
+protowall request approve <slug> <request-id>   # Approve a request (creates Invite)
+protowall request decline <slug> <request-id>   # Decline a request (silent)
 protowall rotate-secret <slug>              # Rotate origin secret
 ```
 
@@ -92,6 +99,13 @@ Add to your agent's MCP config:
 | `get_reviewer_engagement` | Per-reviewer engagement rollup with top paths and timeline (Pro) |
 | `list_reviewer_sessions` | List a reviewer's sessions with cached AI summaries (Pro, read-only — no cap consumed) |
 | `summarize_reviewer_session` | Generate or fetch a cached AI summary for one session (Pro, counts against monthly cap) |
+| `list_previews` | List a project's parallel previews — per-PR / per-branch / per-experiment URLs (Pro) |
+| `create_preview` | Spin up a new preview at `{slug}-{suffix}.proxy.protowall.app` (Pro) |
+| `update_preview` | Update destination URL, label, or external_ref on an open preview (Pro) |
+| `close_preview` | Soft-close a preview when its PR merges or experiment ends (Pro) |
+| `list_access_requests` | List access requests strangers have submitted on the no-access page |
+| `approve_access_request` | Approve a pending request — creates an Invite and sends the standard email |
+| `decline_access_request` | Decline a pending request silently (no email back to requester) |
 
 Once configured, ask your agent things like:
 
@@ -101,6 +115,9 @@ Once configured, ask your agent things like:
 - "Who looked at my-project this week and what did they spend time on?"
 - "Pull the engagement breakdown for the reviewer with invite id cvw80…"
 - "Summarize what acme@corp.com did during their most recent session on my-project"
+- "Spin up a preview of my-project for PR #42 at https://my-app-pr-42.preview.run"
+- "List my open previews of my-project, then close the one for the merged redesign branch"
+- "Show pending access requests on my-project and approve the one from acme@corp.com"
 
 ## Design notes
 
