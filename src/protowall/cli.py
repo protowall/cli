@@ -159,6 +159,127 @@ def cmd_sessions(args):
         _error(e)
 
 
+def cmd_previews(args):
+    """List project previews. Pass --open to filter to currently-resolving ones."""
+    if not args:
+        print("Usage: protowall previews <project-slug> [--open]", file=sys.stderr)
+        raise SystemExit(1)
+    status = "open" if "--open" in args[1:] else None
+    try:
+        _print(_client().list_previews(args[0], status=status))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_preview_create(args):
+    """Create a project preview (Pro)."""
+    if len(args) < 3:
+        print(
+            "Usage: protowall preview create <project-slug> <slug-suffix> <destination-url> [--label=...] [--ref=...]\n"
+            "Example: protowall preview create acme pr-42 https://acme-pr-42.preview.app --ref=github:acme/web#42",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    slug, suffix, dest = args[0], args[1], args[2]
+    label = None
+    external_ref = None
+    for a in args[3:]:
+        if a.startswith("--label="):
+            label = a.split("=", 1)[1] or None
+        elif a.startswith("--ref="):
+            external_ref = a.split("=", 1)[1] or None
+    try:
+        _print(_client().create_preview(slug, suffix, dest, label=label, external_ref=external_ref))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_preview_update(args):
+    """Update destination_url, label, or external_ref on a preview."""
+    if len(args) < 3:
+        print(
+            "Usage: protowall preview update <project-slug> <preview-id> [--url=...] [--label=...] [--ref=...]",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    slug, preview_id = args[0], args[1]
+    destination_url = None
+    label = None
+    external_ref = None
+    for a in args[2:]:
+        if a.startswith("--url="):
+            destination_url = a.split("=", 1)[1]
+        elif a.startswith("--label="):
+            label = a.split("=", 1)[1]
+        elif a.startswith("--ref="):
+            external_ref = a.split("=", 1)[1]
+    if destination_url is None and label is None and external_ref is None:
+        print("Pass at least one of --url, --label, --ref.", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().update_preview(
+            slug, preview_id,
+            destination_url=destination_url, label=label, external_ref=external_ref,
+        ))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_preview_close(args):
+    """Soft-close a preview. Idempotent."""
+    if len(args) < 2:
+        print("Usage: protowall preview close <project-slug> <preview-id>", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().close_preview(args[0], args[1]))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_requests(args):
+    """List access requests. Pass a status to filter (pending / approved / declined)."""
+    if not args:
+        print("Usage: protowall requests <project-slug> [pending|approved|declined]", file=sys.stderr)
+        raise SystemExit(1)
+    status = args[1].upper() if len(args) > 1 else None
+    if status and status not in ("PENDING", "APPROVED", "DECLINED"):
+        print("Status must be one of: pending, approved, declined.", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().list_access_requests(args[0], status=status))
+    except ApiError as e:
+        _error(e)
+
+
+def cmd_request_approve(args):
+    """Approve a pending access request — creates an Invite and sends the invite email."""
+    if len(args) < 2:
+        print("Usage: protowall request approve <project-slug> <request-id>", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().approve_access_request(args[0], args[1]))
+    except ApiError as e:
+        if e.code == "invite_cap":
+            print(
+                f"Error: {e.message}\n"
+                "Decline the request, revoke an existing invitee, or upgrade to Pro.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        _error(e)
+
+
+def cmd_request_decline(args):
+    """Decline a pending access request. Silent — no email back to the requester."""
+    if len(args) < 2:
+        print("Usage: protowall request decline <project-slug> <request-id>", file=sys.stderr)
+        raise SystemExit(1)
+    try:
+        _print(_client().decline_access_request(args[0], args[1]))
+    except ApiError as e:
+        _error(e)
+
+
 def cmd_summarize_session(args):
     """Generate an AI summary for a session (Pro, counts against monthly cap)."""
     if len(args) < 3:
@@ -196,6 +317,13 @@ COMMANDS = {
     "reviewer": ("Reviewer engagement (Pro): reviewer <slug> <invite-id> [7d|30d]", cmd_reviewer),
     "sessions": ("List sessions + cached summaries (Pro, read-only): sessions <slug> <invite-id>", cmd_sessions),
     "summarize-session": ("Generate session summary (Pro, uses cap): summarize-session <slug> <invite-id> <session-start>", cmd_summarize_session),
+    "previews": ("List previews (Pro): previews <slug> [--open]", cmd_previews),
+    "preview create": ("Create preview (Pro): preview create <slug> <suffix> <url> [--label=...] [--ref=...]", cmd_preview_create),
+    "preview update": ("Update preview (Pro): preview update <slug> <preview-id> [--url=...] [--label=...] [--ref=...]", cmd_preview_update),
+    "preview close": ("Close preview (Pro): preview close <slug> <preview-id>", cmd_preview_close),
+    "requests": ("List access requests: requests <slug> [pending|approved|declined]", cmd_requests),
+    "request approve": ("Approve request: request approve <slug> <request-id>", cmd_request_approve),
+    "request decline": ("Decline request: request decline <slug> <request-id>", cmd_request_decline),
     "rotate-secret": ("Rotate secret: rotate-secret <slug>", cmd_rotate_secret),
 }
 

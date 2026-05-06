@@ -7,8 +7,10 @@ from mcp.server.fastmcp import FastMCP
 from protowall.client import ProtoWallClient, ApiError
 
 mcp = FastMCP("ProtoWall", instructions=(
-    "ProtoWall puts an authentication and NDA wall in front of prototypes. "
-    "Use these tools to manage projects, invite reviewers, revoke access, and view audit logs."
+    "ProtoWall is a review platform for confidential prototypes. Builders invite reviewers, "
+    "see what they engaged with, and capture signed feedback. An optional NDA gate can be "
+    "turned on per project. Use these tools to manage projects, invites, previews, access "
+    "requests, audit logs, and reviewer engagement."
 ))
 
 _client = None
@@ -159,6 +161,137 @@ def summarize_reviewer_session(project_slug: str, invite_id: str, session_start:
         session_start: ISO timestamp matching a session_start from list_reviewer_sessions
     """
     return _call(_get_client().summarize_reviewer_session, project_slug, invite_id, session_start)
+
+
+@mcp.tool()
+def list_previews(project_slug: str, only_open: bool = False) -> str:
+    """List parallel previews of a project — per-PR / per-branch / per-experiment URLs.
+
+    Each preview lives at `{project-slug}-{slug_suffix}.proxy.protowall.app` with its own
+    destination URL. Reviewers' invites are project-level, so a single accepted invite
+    covers every open preview automatically. Closed previews stop resolving but stay
+    queryable for audit / engagement / feedback history.
+
+    Args:
+        project_slug: The project's slug
+        only_open: If true, returns only currently-resolving previews. Default false (returns all).
+    """
+    return _call(_get_client().list_previews, project_slug, status="open" if only_open else None)
+
+
+@mcp.tool()
+def create_preview(
+    project_slug: str,
+    slug_suffix: str,
+    destination_url: str,
+    label: str = "",
+    external_ref: str = "",
+) -> str:
+    """Create a parallel preview of a project. Pro plan only.
+
+    The preview lives at `{project_slug}-{slug_suffix}.proxy.protowall.app`. Use this to
+    spin up a separate URL for a PR, branch, or experiment without affecting the main
+    project URL or its versions. `external_ref` is a free-form string for upstream
+    reconciliation (e.g. "github:org/repo#42").
+
+    Args:
+        project_slug: The project's slug
+        slug_suffix: The preview's slug suffix (e.g. "pr-42", "experiment-redesign")
+        destination_url: Where this preview points (e.g. "https://acme-pr-42.preview.app")
+        label: Optional human-readable label (e.g. "PR #42: redesign sidebar")
+        external_ref: Optional upstream reference for reconciliation (e.g. "github:acme/web#42")
+    """
+    return _call(
+        _get_client().create_preview,
+        project_slug,
+        slug_suffix,
+        destination_url,
+        label=label or None,
+        external_ref=external_ref or None,
+    )
+
+
+@mcp.tool()
+def update_preview(
+    project_slug: str,
+    preview_id: str,
+    destination_url: str = "",
+    label: str = "",
+    external_ref: str = "",
+) -> str:
+    """Update destination_url, label, or external_ref on a preview. Pass empty strings to skip a field.
+
+    The slug_suffix is immutable — to rename, close this preview and create a new one.
+    Pass at least one of destination_url / label / external_ref.
+
+    Args:
+        project_slug: The project's slug
+        preview_id: The preview ID (from list_previews)
+        destination_url: New destination URL, or empty to leave unchanged
+        label: New label, or empty to leave unchanged
+        external_ref: New external_ref, or empty to leave unchanged
+    """
+    return _call(
+        _get_client().update_preview,
+        project_slug,
+        preview_id,
+        destination_url=destination_url or None,
+        label=label or None,
+        external_ref=external_ref or None,
+    )
+
+
+@mcp.tool()
+def close_preview(project_slug: str, preview_id: str) -> str:
+    """Soft-close a preview. Idempotent — closing an already-closed preview returns the current state.
+
+    Closed previews stop resolving (their subdomain returns 404) but their audit / engagement
+    / feedback history stays queryable. Use this when a PR merges or an experiment ends.
+
+    Args:
+        project_slug: The project's slug
+        preview_id: The preview ID (from list_previews)
+    """
+    return _call(_get_client().close_preview, project_slug, preview_id)
+
+
+@mcp.tool()
+def list_access_requests(project_slug: str, status: str = "") -> str:
+    """List access requests on a project. Strangers who land on the project URL can request access here.
+
+    Pass `status="PENDING"` to see only requests awaiting your decision. `APPROVED` and `DECLINED`
+    show historical decisions. Default (empty string) returns all.
+
+    Args:
+        project_slug: The project's slug
+        status: Optional filter — "PENDING", "APPROVED", or "DECLINED". Empty for all.
+    """
+    return _call(_get_client().list_access_requests, project_slug, status=status or None)
+
+
+@mcp.tool()
+def approve_access_request(project_slug: str, request_id: str) -> str:
+    """Approve a pending access request — creates an Invite and sends the standard invite email.
+
+    Hits the same per-project invite cap as send_invite. On Free, the 5-invite cap surfaces
+    an `invite_cap` error — decline the request, revoke an existing invitee, or upgrade.
+
+    Args:
+        project_slug: The project's slug
+        request_id: The request ID (from list_access_requests)
+    """
+    return _call(_get_client().approve_access_request, project_slug, request_id)
+
+
+@mcp.tool()
+def decline_access_request(project_slug: str, request_id: str) -> str:
+    """Decline a pending access request. Silent — no email back to the requester (privacy: don't leak project status).
+
+    Args:
+        project_slug: The project's slug
+        request_id: The request ID (from list_access_requests)
+    """
+    return _call(_get_client().decline_access_request, project_slug, request_id)
 
 
 def main():

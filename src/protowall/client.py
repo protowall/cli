@@ -86,6 +86,48 @@ class ProtoWallClient:
             timeout=60,  # Sonnet round-trip can take 5-15s, leave generous headroom
         )
 
+    def list_previews(self, slug, status=None):
+        """List project previews. Pass status='open' to filter to only currently-resolving previews."""
+        params = {"status": status} if status else None
+        return self._request("GET", f"/projects/{slug}/previews", params=params)
+
+    def create_preview(self, slug, slug_suffix, destination_url, label=None, external_ref=None):
+        """Create a project preview (Pro). composite_slug is project.slug + '-' + slug_suffix."""
+        body = {"slug_suffix": slug_suffix, "destination_url": destination_url}
+        if label:
+            body["label"] = label
+        if external_ref:
+            body["external_ref"] = external_ref
+        return self._request("POST", f"/projects/{slug}/previews", body)
+
+    def update_preview(self, slug, preview_id, destination_url=None, label=None, external_ref=None):
+        """Update destination_url, label, or external_ref on a preview. The slug_suffix is immutable."""
+        body = {}
+        if destination_url is not None:
+            body["destination_url"] = destination_url
+        if label is not None:
+            body["label"] = label
+        if external_ref is not None:
+            body["external_ref"] = external_ref
+        return self._request("PATCH", f"/projects/{slug}/previews/{preview_id}", body)
+
+    def close_preview(self, slug, preview_id):
+        """Soft-close a preview. Idempotent. Closed previews stop resolving but keep their history."""
+        return self._request("POST", f"/projects/{slug}/previews/{preview_id}/close")
+
+    def list_access_requests(self, slug, status=None):
+        """List access requests on a project. Pass status='PENDING' / 'APPROVED' / 'DECLINED' to filter."""
+        params = {"status": status} if status else None
+        return self._request("GET", f"/projects/{slug}/requests", params=params)
+
+    def approve_access_request(self, slug, request_id):
+        """Approve a pending access request — creates an Invite and sends the standard invite email."""
+        return self._request("POST", f"/projects/{slug}/requests/{request_id}/approve")
+
+    def decline_access_request(self, slug, request_id):
+        """Decline a pending access request. Silent — no email back to the requester."""
+        return self._request("POST", f"/projects/{slug}/requests/{request_id}/decline")
+
 
 class ApiError(Exception):
     def __init__(self, message, code, status, body=None):
